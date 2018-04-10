@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2027
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsFormsApp1", "WindowsFormsApp1\WindowsFormsApp1.csproj", "{C04DE181-EC59-48D3-B10A-7AF3DB11A80B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PYHHelper", "PYHHelper\PYHHelper.csproj", "{C04DE181-EC59-48D3-B10A-7AF3DB11A80B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
