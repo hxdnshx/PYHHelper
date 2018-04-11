@@ -1,0 +1,3 @@
+[submodule "Haushaltsbuch"]
+	path = Haushaltsbuch
+	url = https://github.com/hxdnshx/Haushaltsbuch.git

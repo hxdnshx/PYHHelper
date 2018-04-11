@@ -1,0 +1,8 @@
+version: '3'
+
+services:
+  replayserver:
+    image: replayserver
+    build:
+      context: .
+      dockerfile: ReplayServer\Dockerfile
