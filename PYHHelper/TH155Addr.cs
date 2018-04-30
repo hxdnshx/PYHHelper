@@ -40,8 +40,18 @@ namespace PYHHelper
         [DllImport("TH155Addr.dll", EntryPoint = "TH155FindWindow")]
         public static extern IntPtr FindWindow();
 
+        [DllImport("TH155Addr.dll", EntryPoint = "TH155IsConnect")]
+        public static extern bool TH155IsConnect();
+
         [DllImport("TH155Addr.dll", EntryPoint = "VirtualPress")]
         public static extern void VirtualPress(int id);
+
+        /// <summary>
+        /// 专用于上下左右
+        /// </summary>
+        /// <param name="id"></param>
+        [DllImport("TH155Addr.dll", EntryPoint = "VirtualPress_Extra")]
+        public static extern void VirtualPressEx(int id);
 
 
         public static string TH155GetRTChildStr(string param)

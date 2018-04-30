@@ -12,9 +12,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TH155Addr", "Haushaltsbuch\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MinimalRT", "Haushaltsbuch\MinimalRT\MinimalRT.vcxproj", "{BA832B12-6AC4-4D32-A6F9-2041C5465AA6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReplayServer", "ReplayServer\ReplayServer.csproj", "{E5848845-A212-49D4-8DEB-4A5F4B67765E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReplayServer", "ReplayServer\ReplayServer.csproj", "{E5848845-A212-49D4-8DEB-4A5F4B67765E}"
 EndProject
 Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{E7E2135A-9382-48B7-9407-EF7AD234ECB2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiveHelper", "LiveHelper\LiveHelper.csproj", "{DBFBAAD7-F8B6-48FD-88F1-762BA30F729A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -80,6 +82,18 @@ Global
 		{E7E2135A-9382-48B7-9407-EF7AD234ECB2}.Release|x64.Build.0 = Release|Any CPU
 		{E7E2135A-9382-48B7-9407-EF7AD234ECB2}.Release|x86.ActiveCfg = Release|Any CPU
 		{E7E2135A-9382-48B7-9407-EF7AD234ECB2}.Release|x86.Build.0 = Release|Any CPU
+		{DBFBAAD7-F8B6-48FD-88F1-762BA30F729A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DBFBAAD7-F8B6-48FD-88F1-762BA30F729A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DBFBAAD7-F8B6-48FD-88F1-762BA30F729A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DBFBAAD7-F8B6-48FD-88F1-762BA30F729A}.Debug|x64.Build.0 = Debug|Any CPU
+		{DBFBAAD7-F8B6-48FD-88F1-762BA30F729A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DBFBAAD7-F8B6-48FD-88F1-762BA30F729A}.Debug|x86.Build.0 = Debug|Any CPU
+		{DBFBAAD7-F8B6-48FD-88F1-762BA30F729A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DBFBAAD7-F8B6-48FD-88F1-762BA30F729A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DBFBAAD7-F8B6-48FD-88F1-762BA30F729A}.Release|x64.ActiveCfg = Release|Any CPU
+		{DBFBAAD7-F8B6-48FD-88F1-762BA30F729A}.Release|x64.Build.0 = Release|Any CPU
+		{DBFBAAD7-F8B6-48FD-88F1-762BA30F729A}.Release|x86.ActiveCfg = Release|Any CPU
+		{DBFBAAD7-F8B6-48FD-88F1-762BA30F729A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
