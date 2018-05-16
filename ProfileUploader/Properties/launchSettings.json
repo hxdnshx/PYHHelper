@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ProfileUploader": {
+      "commandName": "Project",
+      "workingDirectory": "E:\\PYHHelper\\Release\\ProfileUploader"
+    }
+  }
+}

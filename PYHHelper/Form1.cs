@@ -29,6 +29,7 @@ namespace PYHHelper
 
         public Form1()
         {
+            rand = new Random();
             InitializeComponent();
             TH155Addr.TH155AddrStartup(1, this.Handle, TH155Addr.TH155CALLBACK);
             fsw = new FileSystemWatcher();
@@ -80,6 +81,7 @@ namespace PYHHelper
             TH155Addr.TH155AddrCleanup();
         }
 
+        private Random rand;
         private void Form1_Load(object sender, EventArgs e)
         {
             
@@ -214,8 +216,26 @@ namespace PYHHelper
                                 currentindex = currentindex % listBox1.Items.Count;
                                 continue;
                             }
+
+                            var replayData = ReplayReader.Open(listBox1.Items[currentindex].ToString());
+                            //P1 - 6 P2 - 7
+                            File.WriteAllText("P1.txt",replayData[6]);
+                            File.WriteAllText("P2.txt",replayData[7]);
                             File.Copy(listBox1.Items[currentindex].ToString(), textBox1.Text, true);
-                            currentindex = (currentindex + 1) % listBox1.Items.Count;
+                            try
+                            {
+                                if (listBox1.Items.Count > 1000)
+                                {
+                                    listBox1.Items.RemoveAt(rand.Next(1, 999));
+                                }
+
+                                currentindex = (currentindex + 1 + rand.Next(1, 100)) % listBox1.Items.Count;
+                            }
+                            catch (Exception ex)
+                            {
+                                throw ex;
+                            }
+
                             break;
                         }
 
@@ -299,6 +319,8 @@ namespace PYHHelper
                     return;
                 for (; ; )
                 {
+                    if (TH155Addr.TH155AddrGetState() == 0)
+                        return;
                     SetTH155Foreground();
                     if (IsMainMenu())
                         break;
@@ -332,6 +354,8 @@ namespace PYHHelper
                 
                 for (; ; )
                 {
+                    if (TH155Addr.TH155AddrGetState() == 0)
+                        return;
                     var cursorstat_y = TH155Addr.TH155GetRTChildInt("menu/cursor/target_y");
                     SetTH155Foreground();
                     if (predice!=null && predice())
@@ -350,7 +374,7 @@ namespace PYHHelper
             {
                 for (;;)
                 {
-                    if (predice())
+                    if (predice() || TH155Addr.TH155AddrGetState() == 0)
                         return;
                     Thread.Sleep(1000);
                 }
@@ -413,6 +437,8 @@ namespace PYHHelper
                 TH155Addr.VirtualPress(0x43);
                 Thread.Sleep(200);
                 TH155Addr.VirtualPress(90);
+                File.WriteAllText("P1.txt", "");
+                File.WriteAllText("P2.txt", "");
                 Thread.Sleep(5000);
                 await WaitingUntil(() =>
                 {
@@ -460,6 +486,11 @@ namespace PYHHelper
         private void button3_Click(object sender, EventArgs e)
         {
             Task.Run((Action)FetchTenco);
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            ReplayReader.Open(listBox1.Items[3].ToString());
         }
     }
 }
