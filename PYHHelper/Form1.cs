@@ -24,8 +24,27 @@ namespace PYHHelper
         [DllImport("user32.dll")]
         public static extern bool SetForegroundWindow(IntPtr hWnd);
 
+        [DllImport("User.dll", EntryPoint = "SendMessage")]
+
+        private static extern int SendMessage(
+
+            IntPtr hWnd,　　　// handle to destination window 
+
+            int Msg,　　　 // message 
+
+            int wParam,　// first message parameter 
+
+            int lParam // second message parameter 
+
+        );
+
         private FileSystemWatcher fsw;
         private HttpClient _client;
+
+        void Log(string str)
+        {
+            File.AppendAllText("run.log", str);
+        }
 
         public Form1()
         {
@@ -139,30 +158,36 @@ namespace PYHHelper
             if (tencoFetch)
                 return;
             tencoFetch = true;
-            var data = HttpGet("https://tenco.info/game/7/replay/");
-            var date = _currentDate.ToString("yyyyMMdd");
-            var pat = new Regex($"(//tenco.info/replay/7/0/({date}[^\\.]+\\.rep))\"");
-            var mat = pat.Matches(data);
-            foreach (Match match in mat)
+            try
             {
-                var result = _client.GetAsync($"http:{match.Groups[1].Value}").Result;
-                var filePath = textBox2.Text + "\\" + DecodeUrlString(match.Groups[2].Value);
-                if (result.StatusCode == HttpStatusCode.OK && !File.Exists(filePath))
+                var data = HttpGet("https://tenco.info/game/7/replay/");
+                var date = _currentDate.ToString("yyyyMMdd");
+                var pat = new Regex($"(//tenco.info/replay/7/0/({date}[^\\.]+\\.rep))\"");
+                var mat = pat.Matches(data);
+                foreach (Match match in mat)
                 {
-                    var rawResult = result.Content.ReadAsByteArrayAsync().Result;
-                    var finResult = Decompress_GZip(rawResult);
-                    FileStream file = new FileStream(filePath,FileMode.Create);
-                    file.Write(finResult,0,finResult.Length);
-                    file.Close();
-                    this.Invoke((Action) (() =>
+                    var result = _client.GetAsync($"http:{match.Groups[1].Value}").Result;
+                    var filePath = textBox2.Text + "\\" + DecodeUrlString(match.Groups[2].Value);
+                    if (result.StatusCode == HttpStatusCode.OK && !File.Exists(filePath))
                     {
-                        listBox1.Items.Insert(currentindex, filePath);
-                    }));
+                        var rawResult = result.Content.ReadAsByteArrayAsync().Result;
+                        var finResult = Decompress_GZip(rawResult);
+                        FileStream file = new FileStream(filePath, FileMode.Create);
+                        file.Write(finResult, 0, finResult.Length);
+                        file.Close();
+                        this.Invoke((Action) (() => { listBox1.Items.Insert(currentindex, filePath); }));
 
+                    }
                 }
             }
-
-            tencoFetch = false;
+            catch (Exception e)
+            {
+                Log(e.ToString());
+            }
+            finally
+            {
+                tencoFetch = false;
+            }
             _currentDate = DateTime.Now;
         }
 
@@ -195,15 +220,23 @@ namespace PYHHelper
                 var play_state = TH155Addr.TH155GetRTChildInt("replay/game_mode");
                 label2.Text = "replayStat : " + play_state;
 
-                if (!IsReplaying() && checkBox1.Checked && !executing)
+                if (play_state == -1 && TH155Addr.TH155AddrGetState() != 0)
+                {
+                    //无法获取到信息，重启游戏
+                    TerminateTH155();
+                }
+
+                if (!IsReplaying() && (checkBox1.Checked || _LoadReplay) && !executing)
                 {
                     executing = true;
+                    Log($"Exec:SwitchReplay");
                     Task.Run(() => {
                         //Thread.Sleep(2500);
                         if (CheckCursor(-1)) //暂停中
                         {
                             SetTH155Foreground();
                             TH155Addr.VirtualPress(88);//x
+                            Log($"Exec Finish:SwitchReplay(Pause)");
                             executing = false;
                             return;
                         }
@@ -219,8 +252,17 @@ namespace PYHHelper
 
                             var replayData = ReplayReader.Open(listBox1.Items[currentindex].ToString());
                             //P1 - 6 P2 - 7
-                            File.WriteAllText("P1.txt",replayData[6]);
-                            File.WriteAllText("P2.txt",replayData[7]);
+                            File.WriteAllText("P1.txt",replayData[6].Replace("\\", ""));
+                            try
+                            {
+                                ApplyAvatar(replayData[6], "P1.png");
+                                File.WriteAllText("P2.txt", replayData[7].Replace("\\", ""));
+                                ApplyAvatar(replayData[7],"P2.png");
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine(ex);
+                            }
                             File.Copy(listBox1.Items[currentindex].ToString(), textBox1.Text, true);
                             try
                             {
@@ -252,6 +294,8 @@ namespace PYHHelper
                         TH155Addr.VirtualPress(90);
                         //SendKeys.SendWait("z");
                         Thread.Sleep(2000);
+                        Log($"Exec Finish:SwitchReplay");
+                        _LoadReplay = false;
                         executing = false;
                     });
                     
@@ -261,6 +305,15 @@ namespace PYHHelper
             {
                 LaunchTH155();
             }
+        }
+
+        private static void ApplyAvatar(string playerID, string dstFile)
+        {
+            string file = $"Avatar/{playerID.Replace("\\", "")}.png";
+            if (File.Exists(file))
+                File.Copy(file, dstFile, true);
+            else
+                File.Copy($"Avatar/Default.png", dstFile, true);
         }
 
         private bool IsMainMenu()
@@ -386,7 +439,8 @@ namespace PYHHelper
             if (executing)
                 return;
             executing = true;
-            for(;;)
+            Log($"Exec: Launch TH155");
+            for (;;)
             {
                 Process proc = new Process();
                 proc.StartInfo.FileName = "steam://run/716710";
@@ -407,7 +461,21 @@ namespace PYHHelper
             Thread.Sleep(200);
             TH155Addr.VirtualPress(90);
             Thread.Sleep(300);
+            Log($"Exec Finish:LaunchTH155");
             executing = false;
+        }
+
+        private void TerminateTH155()
+        {
+            var hwnd = TH155Addr.FindWindow();
+            try
+            {
+                SendMessage(hwnd, 0x0010, 0, 0); // WM_CLOSE
+            }
+            catch (Exception e)
+            {
+                Log(e.ToString());
+            }
         }
 
         private void SetTH155Foreground()
@@ -423,6 +491,11 @@ namespace PYHHelper
             if (TH155Addr.TH155AddrGetState() < 1)
                 return;
             executing = true;
+            Log($"Exec: Network Match");
+            File.WriteAllText("P1.txt", "***");
+            File.WriteAllText("P2.txt", "***");
+            File.Copy($"Avatar/Default.png", "P1.png", true);
+            File.Copy($"Avatar/Default.png", "P2.png", true);
             Clipboard.SetText(IPAddress);
             SetTH155Foreground();
             await ReturnToGameMenu();
@@ -437,9 +510,25 @@ namespace PYHHelper
                 TH155Addr.VirtualPress(0x43);
                 Thread.Sleep(200);
                 TH155Addr.VirtualPress(90);
-                File.WriteAllText("P1.txt", "");
-                File.WriteAllText("P2.txt", "");
+
                 Thread.Sleep(5000);
+                if (TH155Addr.TH155IsConnect())
+                {
+                    //network/player_name/0
+                    try
+                    {
+                        var P1 = TH155Addr.TH155GetRTChildStr("network/player_name/0");
+                        var P2 = TH155Addr.TH155GetRTChildStr("network/player_name/1");
+                        File.WriteAllText("P1.txt", P1);
+                        File.WriteAllText("P2.txt", P2);
+                        ApplyAvatar(P1, "P1.png");
+                        ApplyAvatar(P2, "P2.png");
+                    }
+                    catch (Exception ex)
+                    {
+                        File.AppendAllText("exception.txt",ex.ToString());
+                    }
+                }
                 await WaitingUntil(() =>
                 {
                     //var is_watch = TH155Addr.TH155GetRTChildInt("network/is_watch");
@@ -454,6 +543,7 @@ namespace PYHHelper
             //await SwitchTo(512);
             //TH155Addr.VirtualPress(90);
             //Thread.Sleep(300);
+            Log($"Exec Finish:Network Match");
             executing = false;
         }
 
@@ -491,6 +581,18 @@ namespace PYHHelper
         private void button4_Click(object sender, EventArgs e)
         {
             ReplayReader.Open(listBox1.Items[3].ToString());
+        }
+
+        private bool _LoadReplay = false;
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                listBox1.Items.Add(openFileDialog1.FileName);
+                currentindex = listBox1.Items.Count - 1;
+                _LoadReplay = true;
+            }
         }
     }
 }
