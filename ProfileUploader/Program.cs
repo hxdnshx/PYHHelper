@@ -375,8 +375,8 @@ namespace ProfileUploader
                             return ret;
                         };
 
-                        var p1Name = Convert(ctx.P1Name);
-                        var p2Name = Convert(ctx.P2Name);
+                        var p1Name = Convert(ctx.P1Name).Replace("\u0016","");
+                        var p2Name = Convert(ctx.P2Name).Replace("\u0016", "");
                         game.Add(
                             new XElement("trackrecord",
                                 new XElement("timestamp",
