@@ -28,7 +28,7 @@ namespace PYHHelper
         [DllImport("TH155Addr.dll", EntryPoint = "TH155AddrGetState")]
         public static extern int TH155AddrGetState();
         [DllImport("TH155Addr.dll", EntryPoint = "TH155GetRTChildStr")]
-        public static extern int TH155GetRTChildStr(string param, [Out, MarshalAs(UnmanagedType.LPStr)]StringBuilder result);
+        public static extern int TH155GetRTChildStr(string param, byte[] buffer);//[Out, MarshalAs(UnmanagedType.LPStr)]
 
         [DllImport("TH155Addr.dll", EntryPoint = "TH155EnumRTCHild")]
         public static extern int TH155EnumRTCHild();
@@ -56,9 +56,15 @@ namespace PYHHelper
 
         public static string TH155GetRTChildStr(string param)
         {
-            StringBuilder result = new StringBuilder(256);
-            TH155GetRTChildStr(param, result);
-            return result.ToString();
+            byte[] buffer = new byte[256];
+            TH155GetRTChildStr(param, buffer);
+            int i;
+            for (i = 0; i < 256; i++)
+            {
+                if (buffer[i] == '\0')
+                    break;
+            }
+            return Encoding.GetEncoding("Shift_JIS").GetString(buffer.Take(i).ToArray());
         }
         
     }
