@@ -11,6 +11,7 @@ namespace PYHHelper
     class ReplayReader
     {
         private static byte[] PacketBegin = new byte[] {0x10, 0x00, 0x00, 0x08};
+        private static byte[] IntBegin = new byte[] {0x02, 0x00, 0x00, 0x05};
         static byte[] Slice(byte[] arr, int offset, int length)
         {
             return arr.Skip(offset).Take(length).ToArray();
@@ -22,7 +23,7 @@ namespace PYHHelper
 
             byte[] CompressedMetaData = Slice(rep, 21, metaLength);
             byte[] RestData = Slice(rep, 21 + metaLength, rep.Length - 21 + metaLength);
-            File.WriteAllBytes("E:\\restData.txt", RestData);
+            //File.WriteAllBytes("E:\\restData.txt", RestData);
 
             byte[] MetaData = Inflate(CompressedMetaData);
 
@@ -35,6 +36,16 @@ namespace PYHHelper
                     byte[] packetNameArray = Slice(MetaData, i + 8, nameLength);
                     string packetName = Encoding.GetEncoding("Shift_JIS").GetString(packetNameArray);
                     Names.Add(packetName);
+                    i += 8;
+                    i += nameLength;
+                    i--;
+                }
+                else if(Slice(MetaData, i, 4).SequenceEqual(IntBegin))// Int
+                {
+                    int value = BitConverter.ToInt32(Slice(MetaData, i + 4, 4), 0);
+                    Names.Add(value.ToString());
+                    i += 8;
+                    i--;
                 }
             }
 
