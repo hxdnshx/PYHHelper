@@ -47,12 +47,27 @@ namespace LiveHelper
         {
         }
         static Regex pattern = new Regex("([0-9]+.[0-9]+.[0-9]+.[0-9]+:[0-9]+)");
+        private static Regex pattern2 = new Regex("点rep-(\\{[^\\}]+\\}.+)");
         private void Class1_ReceivedDanmaku(object sender, BilibiliDM_PluginFramework.ReceivedDanmakuArgs e)
         {
             if (!Status)
                 return;
             if (e.Danmaku.CommentText == null)
                 return;
+            var mat2 = pattern2.Match(e.Danmaku.CommentText);
+            if (mat2.Success)
+            {
+                targethwnd = FindWindow(null, "PYHHelper");
+                if (targethwnd == IntPtr.Zero)
+                    return;
+                setting.Dispatcher.BeginInvoke(DispatcherPriority.Normal, (ThreadStart)delegate
+                {
+                    Clipboard.SetText(mat2.Groups[1].Value);
+                    SendMessage(targethwnd, 0x402, IntPtr.Zero, IntPtr.Zero);
+                });
+                Log("发送点Rep请求");
+            }
+
             if (e.Danmaku.isAdmin == false)
                 return;
             var mat = pattern.Match(e.Danmaku.CommentText);

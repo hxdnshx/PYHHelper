@@ -41,6 +41,10 @@ namespace PYHHelper
         private FileSystemWatcher fsw;
         private HttpClient _client;
 
+        private bool _isPendingFilter = false;
+        private int _filterIndex = 0;
+        private string _filterValue;
+
         void Log(string str)
         {
             File.AppendAllText("run.log", str);
@@ -83,7 +87,12 @@ namespace PYHHelper
             currentindex = (currentindex + 1) % listBox1.Items.Count;
         }
 
+        void StatusLog(string str)
+        {
+            File.WriteAllText("status.txt", str);
+        }
 
+        private Regex _filterPat = new Regex("\\{([^\\}]+)\\}(.*)");
         protected override void WndProc(ref Message m)
         {
             if (m.Msg == 0x401)
@@ -91,6 +100,26 @@ namespace PYHHelper
                 string str = Clipboard.GetText();
                 ToNetwork(str);
                 return;
+            }
+            else if (m.Msg == 0x402)
+            {
+                string str = Clipboard.GetText();
+                var result = _filterPat.Match(str);
+                if (result.Success)
+                {
+                    string filter = result.Groups[1].Value;
+                    string filterValue = result.Groups[2].Value;
+                    if (!ReplayReader.PropIndex.ContainsKey(filter))
+                    {
+                        StatusLog($"点rep失败：无效的类别{filter}");
+                        return;
+                    }
+
+                    _filterIndex = ReplayReader.PropIndex[filter];
+                    _filterValue = filterValue;
+                    _isPendingFilter = true;
+                    StatusLog($"点rep成功！之后将播放{filter}为{filterValue}的rep");
+                }
             }
             base.WndProc(ref m);
         }
@@ -241,8 +270,25 @@ namespace PYHHelper
                             return;
                         }
 
+                        int enumCount = 0;
+                        int alterFilter = ReplayReader.Switch12P(_filterIndex);
                         for (;;)
                         {
+                            enumCount++;
+                            if (enumCount >= listBox1.Items.Count)
+                            {
+                                if (_isPendingFilter)
+                                {
+                                    _isPendingFilter = false;
+                                    StatusLog($"点rep失败，没有找到满足条件的rep");
+                                    enumCount = 0;
+                                }
+                                else
+                                {
+                                    checkBox1.Checked = false;
+                                    return;
+                                }
+                            }
                             if (!File.Exists(listBox1.Items[currentindex].ToString()))
                             {
                                 listBox1.Items.RemoveAt(currentindex);
@@ -250,35 +296,57 @@ namespace PYHHelper
                                 continue;
                             }
 
-                            var replayData = ReplayReader.Open(listBox1.Items[currentindex].ToString());
-                            //P1 - 6 P2 - 7
-                            File.WriteAllText("P1.txt",replayData[6].Replace("\\", ""));
                             try
                             {
-                                ApplyAvatar(replayData[6], "P1.png");
-                                File.WriteAllText("P2.txt", replayData[7].Replace("\\", ""));
-                                ApplyAvatar(replayData[7],"P2.png");
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine(ex);
-                            }
-                            File.Copy(listBox1.Items[currentindex].ToString(), textBox1.Text, true);
-                            try
-                            {
-                                if (listBox1.Items.Count > 1000)
+                                var replayData = ReplayReader.Open(listBox1.Items[currentindex].ToString());
+                                if (_isPendingFilter)
                                 {
-                                    listBox1.Items.RemoveAt(rand.Next(1, 999));
+                                    if (!replayData[_filterIndex].Contains(_filterValue) &&
+                                        !replayData[alterFilter].Contains(_filterValue))
+                                    {
+                                        currentindex = (currentindex + 1) % listBox1.Items.Count;
+                                        continue;
+                                    }
                                 }
 
-                                currentindex = (currentindex + 1 + rand.Next(1, 100)) % listBox1.Items.Count;
+                                //P1 - 6 P2 - 7
+                                File.WriteAllText("P1.txt", replayData[14].Replace("\\", ""));
+                                try
+                                {
+                                    ApplyAvatar(replayData[14], "P1.png");
+                                    File.WriteAllText("P2.txt", replayData[16].Replace("\\", ""));
+                                    ApplyAvatar(replayData[16], "P2.png");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine(ex);
+                                }
+
+                                File.Copy(listBox1.Items[currentindex].ToString(), textBox1.Text, true);
+                                try
+                                {
+
+                                    currentindex = (currentindex + 1 + rand.Next(1, 100)) % listBox1.Items.Count;
+                                }
+                                catch (Exception ex)
+                                {
+                                    throw ex;
+                                }
                             }
-                            catch (Exception ex)
+                            catch (Exception exc)
                             {
-                                throw ex;
+                                File.AppendAllText("exception.txt",$"{_filterIndex} {alterFilter}\n");
+                                File.AppendAllText("exception.txt",exc.ToString());
+                                continue;
                             }
 
                             break;
+                        }
+
+                        if (_isPendingFilter)
+                        {
+                            StatusLog("点rep成功！");
+                            _isPendingFilter = false;
                         }
 
                         SetTH155Foreground();
@@ -580,7 +648,8 @@ namespace PYHHelper
 
         private void button4_Click(object sender, EventArgs e)
         {
-            ReplayReader.Open(listBox1.Items[3].ToString());
+            ReplayReader.Open(listBox1.Items[0].ToString());
+            ReplayReader.ModifyRep(listBox1.Items[0].ToString());
         }
 
         private bool _LoadReplay = false;
