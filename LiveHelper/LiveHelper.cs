@@ -47,7 +47,7 @@ namespace LiveHelper
         {
         }
         static Regex pattern = new Regex("([0-9]+.[0-9]+.[0-9]+.[0-9]+:[0-9]+)");
-        private static Regex pattern2 = new Regex("点rep-(\\{[^\\}]+\\}.+)");
+        private static Regex pattern2 = new Regex(@"点rep-((\{[^,]+,[^\}]+\})+)");
         private void Class1_ReceivedDanmaku(object sender, BilibiliDM_PluginFramework.ReceivedDanmakuArgs e)
         {
             if (!Status)

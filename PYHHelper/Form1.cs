@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
@@ -15,6 +17,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.EntityFrameworkCore;
 
 namespace PYHHelper
 {
@@ -40,10 +43,10 @@ namespace PYHHelper
 
         private FileSystemWatcher fsw;
         private HttpClient _client;
-
-        private bool _isPendingFilter = false;
-        private int _filterIndex = 0;
-        private string _filterValue;
+        
+        private ReplayRecord _records;
+        private List<ReplayTable> _current;
+        private string _filterStr;
 
         void Log(string str)
         {
@@ -72,6 +75,10 @@ namespace PYHHelper
             _client.DefaultRequestHeaders.Add("Accept-Language", "zh-CN,zh;q=0.8");
 
             _currentDate = DateTime.Now;
+
+            _records = new ReplayRecord("repRecord.db");
+            _records.Database.EnsureCreated();
+            _records.Database.Migrate();
         }
 
         private DateTime _currentDate;
@@ -83,8 +90,38 @@ namespace PYHHelper
             string newPath = textBox2.Text + "\\" + time.Month + "-" + time.Day + "-" + fi.Name;
             Thread.Sleep(2500);
             File.Copy(e.FullPath, newPath, true);
-            listBox1.Items.Insert(currentindex, newPath);
-            currentindex = (currentindex + 1) % listBox1.Items.Count;
+            //listBox1.Items.Insert(currentindex, newPath);
+            insertRecord(newPath);
+            //currentindex = (currentindex + 1) % listBox1.Items.Count;
+        }
+
+        private void insertRecord(string newPath, bool isBatch = false)
+        {
+            var info = ReplayReader.Open(newPath);
+            if (info.Count < 43)
+            {
+                File.AppendAllText("exception.txt",$"非预期的info大小{info.Count}：{newPath}\n");
+                return;
+            }
+            try
+            {
+                _records.Replays.Add(new ReplayTable
+                {
+                    FileName = newPath,
+                    P1Name = info[14],
+                    P2Name = info[16],
+                    P1Master = info[40],
+                    P2Master = info[42],
+                    P1Slave = info[9],
+                    P2Slave = info[11]
+                });
+                if(!isBatch)
+                    _records.SaveChanges();
+            }
+            catch (Exception e)
+            {
+                File.AppendAllText("exception.txt", e.ToString());
+            }
         }
 
         void StatusLog(string str)
@@ -92,7 +129,7 @@ namespace PYHHelper
             File.WriteAllText("status.txt", str);
         }
 
-        private Regex _filterPat = new Regex("\\{([^\\}]+)\\}(.*)");
+        private Regex _filterPat = new Regex(@"{([^,]+),([^\}]+)\}");
         protected override void WndProc(ref Message m)
         {
             if (m.Msg == 0x401)
@@ -104,21 +141,48 @@ namespace PYHHelper
             else if (m.Msg == 0x402)
             {
                 string str = Clipboard.GetText();
-                var result = _filterPat.Match(str);
-                if (result.Success)
+                var results = _filterPat.Matches(str);
+                IQueryable<ReplayTable> query = _records.Replays;
+                string filterStr = "";
+                foreach (Match result in results)
                 {
                     string filter = result.Groups[1].Value;
                     string filterValue = result.Groups[2].Value;
-                    if (!ReplayReader.PropIndex.ContainsKey(filter))
+                    bool isValid = true;
+                    switch (filter)
                     {
-                        StatusLog($"点rep失败：无效的类别{filter}");
-                        return;
+                        case "P1":
+                        case "P2":
+                            query = query.Where(ele => ele.P1Name.Contains(filterValue) || ele.P2Name.Contains(filterValue));
+                            break;
+                        case "P1主机":
+                        case "P2主机":
+                            query = query.Where(ele => ele.P2Master == filterValue || ele.P1Master == filterValue);
+                            break;
+                        case "P1副机":
+                        case "P2副机":
+                            query = query.Where(ele => ele.P2Slave == filterValue || ele.P1Slave == filterValue);
+                            break;
+                        default:
+                            isValid = false;
+                            break;
                     }
 
-                    _filterIndex = ReplayReader.PropIndex[filter];
-                    _filterValue = filterValue;
-                    _isPendingFilter = true;
-                    StatusLog($"点rep成功！之后将播放{filter}为{filterValue}的rep");
+                    if (!isValid)
+                        continue;
+                    filterStr += $"{filter}为{filterStr} ";
+                }
+
+                var resultList = new List<ReplayTable>(query);
+                if (resultList.Count <= 0)
+                {
+                    StatusLog($"失败，找不到满足条件的rep:{filterStr}");
+                }
+                else
+                {
+                    StatusLog($"成功，共有{resultList.Count}个rep:{filterStr}");
+                    _current = resultList;
+                    _filterStr = filterStr;
                 }
             }
             base.WndProc(ref m);
@@ -204,7 +268,7 @@ namespace PYHHelper
                         FileStream file = new FileStream(filePath, FileMode.Create);
                         file.Write(finResult, 0, finResult.Length);
                         file.Close();
-                        this.Invoke((Action) (() => { listBox1.Items.Insert(currentindex, filePath); }));
+                        this.Invoke((Action) (() => { insertRecord(filePath); }));
 
                     }
                 }
@@ -219,10 +283,8 @@ namespace PYHHelper
             }
             _currentDate = DateTime.Now;
         }
-
-        private bool execed = false;
+        
         private bool executing = false;
-        private int currentindex = 0;
         private void timer1_Tick_1(object sender, EventArgs e)
         {
             label6.Text = (executing ? "Executing" : "Idleing") + (tencoFetch ? "Fetching" : "");
@@ -235,11 +297,6 @@ namespace PYHHelper
             }
             if (state >= 1)
             {
-                if (execed == false)
-                {
-                    execed = true;
-                    TH155Addr.TH155EnumRTCHild();
-                }
 
                 var cursorstat_y = TH155Addr.TH155GetRTChildInt("menu/cursor/target_y");
                 var cursorstat_x = TH155Addr.TH155GetRTChildInt("menu/cursor/target_x");
@@ -270,83 +327,38 @@ namespace PYHHelper
                             return;
                         }
 
-                        int enumCount = 0;
-                        int alterFilter = ReplayReader.Switch12P(_filterIndex);
-                        for (;;)
+                        string selectedReplay = "";
+                        try
                         {
-                            enumCount++;
-                            if (enumCount >= listBox1.Items.Count)
+                            if (_current != null && _current.Count > 0)
                             {
-                                if (_isPendingFilter)
-                                {
-                                    _isPendingFilter = false;
-                                    StatusLog($"点rep失败，没有找到满足条件的rep");
-                                    enumCount = 0;
-                                }
-                                else
-                                {
-                                    checkBox1.Checked = false;
-                                    return;
-                                }
+                                selectedReplay = _current.Last().FileName;
+                                _current.RemoveAt(_current.Count - 1);
+                                StatusLog($"正在播放满足条件的Rep，还剩{_current.Count}个:{_filterStr}");
                             }
-                            if (!File.Exists(listBox1.Items[currentindex].ToString()))
+                            else
                             {
-                                listBox1.Items.RemoveAt(currentindex);
-                                currentindex = currentindex % listBox1.Items.Count;
-                                continue;
+                                selectedReplay = _records.Replays.OrderBy(x => Guid.NewGuid()).Take(1).First().FileName;
+                                StatusLog("正在随机播放所有rep");
                             }
 
-                            try
+                            var info = ReplayReader.Open(selectedReplay);
+                            Func<string, string> processStr = input =>
                             {
-                                var replayData = ReplayReader.Open(listBox1.Items[currentindex].ToString());
-                                if (_isPendingFilter)
-                                {
-                                    if (!replayData[_filterIndex].Contains(_filterValue) &&
-                                        !replayData[alterFilter].Contains(_filterValue))
-                                    {
-                                        currentindex = (currentindex + 1) % listBox1.Items.Count;
-                                        continue;
-                                    }
-                                }
-
-                                //P1 - 6 P2 - 7
-                                File.WriteAllText("P1.txt", replayData[14].Replace("\\", ""));
-                                try
-                                {
-                                    ApplyAvatar(replayData[14], "P1.png");
-                                    File.WriteAllText("P2.txt", replayData[16].Replace("\\", ""));
-                                    ApplyAvatar(replayData[16], "P2.png");
-                                }
-                                catch (Exception ex)
-                                {
-                                    Console.WriteLine(ex);
-                                }
-
-                                File.Copy(listBox1.Items[currentindex].ToString(), textBox1.Text, true);
-                                try
-                                {
-
-                                    currentindex = (currentindex + 1 + rand.Next(1, 100)) % listBox1.Items.Count;
-                                }
-                                catch (Exception ex)
-                                {
-                                    throw ex;
-                                }
-                            }
-                            catch (Exception exc)
-                            {
-                                File.AppendAllText("exception.txt",$"{_filterIndex} {alterFilter}\n");
-                                File.AppendAllText("exception.txt",exc.ToString());
-                                continue;
-                            }
-
-                            break;
+                                string ret = input.Replace("\\", "").Trim();
+                                return ret.Length == 0 ? "无名黑幕" : ret;
+                            };
+                            var P1Name = processStr(info[14]);
+                            var P2Name = processStr(info[16]);
+                            File.WriteAllText("P1.txt", P1Name);
+                            ApplyAvatar(P1Name, "P1.png");
+                            File.WriteAllText("P2.txt", P2Name);
+                            ApplyAvatar(P2Name, "P2.png");
+                            File.Copy(selectedReplay, textBox1.Text, true);
                         }
-
-                        if (_isPendingFilter)
+                        catch (Exception ex)
                         {
-                            StatusLog("点rep成功！");
-                            _isPendingFilter = false;
+                            File.AppendAllText("exception.txt",ex.ToString());
                         }
 
                         SetTH155Foreground();
@@ -619,8 +631,11 @@ namespace PYHHelper
         {
             foreach (var file in Directory.EnumerateFiles(textBox2.Text,"*.rep"))
             {
-                listBox1.Items.Insert(0, file);
+                insertRecord(file, true);
+                //listBox1.Items.Insert(0, file);
             }
+
+            _records.SaveChanges();
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -648,8 +663,11 @@ namespace PYHHelper
 
         private void button4_Click(object sender, EventArgs e)
         {
-            ReplayReader.Open(listBox1.Items[0].ToString());
-            ReplayReader.ModifyRep(listBox1.Items[0].ToString());
+            Clipboard.SetText("{P1,Finn}{P1主机,usami}");
+            Message mockMsg = new Message {Msg = 0x402};
+            WndProc(ref mockMsg);
+            //ReplayReader.Open(listBox1.Items[0].ToString());
+            //ReplayReader.ModifyRep(listBox1.Items[0].ToString());
         }
 
         private bool _LoadReplay = false;
@@ -658,10 +676,46 @@ namespace PYHHelper
         {
             if (openFileDialog1.ShowDialog() == DialogResult.OK)
             {
-                listBox1.Items.Add(openFileDialog1.FileName);
-                currentindex = listBox1.Items.Count - 1;
+                //listBox1.Items.Add(openFileDialog1.FileName);
+                //currentindex = listBox1.Items.Count - 1;
+                _current = new List<ReplayTable>();
+                _current.Add(new ReplayTable{FileName = openFileDialog1.FileName });
                 _LoadReplay = true;
             }
         }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            TH155Addr.TH155EnumRTCHild();
+        }
+    }
+
+    public class ReplayRecord : DbContext
+    {
+        public DbSet<ReplayTable> Replays { get; set; }
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.UseSqlite($"Data Source={_dbpath}");
+        }
+
+        public ReplayRecord(string databasePath)
+        {
+            _dbpath = databasePath;
+        }
+
+        public string _dbpath;
+    }
+
+    [Table("ReplayRecord")]
+    public class ReplayTable
+    {
+        [Key]
+        public string FileName { get; set; }
+        public string P1Name { get; set; }
+        public string P2Name { get; set; }
+        public string P1Master { get; set; }
+        public string P2Master { get; set; }
+        public string P1Slave { get; set; }
+        public string P2Slave { get; set; }
     }
 }
