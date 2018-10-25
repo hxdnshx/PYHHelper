@@ -17,28 +17,58 @@ namespace HelperSrv_2.Controllers
     {
         //懒得弄到依赖注入里面了，嘤嘤嘤
         private static Dictionary<string, string> pendingAvater = new Dictionary<string, string>();
+
+        
+
         [HttpPost("Upload")]
-        public string Upload([FromForm] string UserName, [FromForm] IFormFile userAvater)
+        public IActionResult Upload([FromForm] IFormFile file)
         {
+
+            string guid = Guid.NewGuid().ToString() + ".png";
+            string dstPath = Path.Combine("Images", guid);
             try
             {
-                using (var stream = userAvater.OpenReadStream())
+                using (var stream = file.OpenReadStream())
                 {
-                    string guid = Guid.NewGuid().ToString() + ".png";
-                    string dstPath = Path.Combine("Images", guid);
                     using (var img = Image.Load(stream))
                     {
                         img.Mutate(x => x.Resize(96, 96));
-                        img.Save(Path.Combine(dstPath));
+                        img.Save(Path.Combine("wwwroot", dstPath));
                     }
-                    pendingAvater.Add(UserName,dstPath);
                 }
             }
             catch (Exception e)
             {
-                return (new JObject {{"status", "1"},{"error", e.ToString()}}).ToString();
+                return new ContentResult
+                {
+                    Content = (new JObject { { "status", "1" }, { "error", e.ToString() } }).ToString() ,
+                    StatusCode = 500
+                };
             }
-            return (new JObject {{ "status", "0" }}).ToString();
+            return new ContentResult
+            {
+                Content = (new JObject { { "status", "0" }, { "path", dstPath } }).ToString(),
+                StatusCode = 200
+            };
+        }
+
+        [HttpPost("Add")]
+        public string AddEntry([FromForm] string name, [FromForm] string img)
+        {
+            try
+            {
+                if (System.IO.File.Exists(Path.Combine("wwwroot", img)))
+                    pendingAvater[name] = img;
+                else
+                {
+                    throw new Exception("Could not found File:" + img);
+                }
+            }
+            catch (Exception e)
+            {
+                return (new JObject { { "status", "1" }, { "error", e.ToString() } }).ToString();
+            }
+            return (new JObject { { "status", "0" } }).ToString();
         }
 
         [HttpGet("List")]
@@ -55,6 +85,7 @@ namespace HelperSrv_2.Controllers
                 });
             }
             obj.Add("datas", datas);
+            pendingAvater.Clear();
             return obj.ToString();
         }
     }

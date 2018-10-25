@@ -18,6 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Linq;
 
 namespace PYHHelper
 {
@@ -43,6 +44,7 @@ namespace PYHHelper
 
         private FileSystemWatcher fsw;
         private HttpClient _client;
+        private HttpClient _client2;
         
         private ReplayRecord _records;
         private List<ReplayTable> _current;
@@ -63,7 +65,7 @@ namespace PYHHelper
             fsw.Filter = "*.rep";
             fsw.IncludeSubdirectories = true;
             fsw.EnableRaisingEvents = false;
-
+            _client2 = new HttpClient();
             _client = new HttpClient();
             _client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A356 Safari/604.1");
             //client.DefaultRequestHeaders.Add("Content-Type", "application /x-www-form-urlencoded");
@@ -231,9 +233,9 @@ namespace PYHHelper
             }
         }
 
-        protected string HttpGet(string uri)
+        protected string HttpGet(string uri, HttpClient client = null)
         {
-            var result = _client.GetAsync(uri).Result;
+            var result = (client??_client).GetAsync(uri).Result;
             if (result.Content.Headers.ContentEncoding.Contains("gzip"))
             {
                 var rawResult = result.Content.ReadAsByteArrayAsync().Result;
@@ -700,6 +702,50 @@ namespace PYHHelper
         private void button6_Click(object sender, EventArgs e)
         {
             TH155Addr.TH155EnumRTCHild();
+        }
+
+        private void timer2_Tick(object sender, EventArgs e)
+        {
+            var str = HttpGet("http://pyh.saigetsu.moe/api/ImgUpload/List",_client2);
+            str = str.Substring(1, str.Length - 2);
+            str = str.Replace("\\n", "\n");
+            str = str.Replace("\\\"", "\"");
+            var obj = JObject.Parse(str);
+            foreach (var elements in obj["datas"] as JArray)
+            {
+                var profileName = elements["name"].Value<string>();
+                var imgPath = "http://pyh.saigetsu.moe/" + elements["img"].Value<string>();
+                File.AppendAllText("AvaterLog.log", $"{profileName} {imgPath}\n");
+                if (!IsValidFilename(profileName))
+                    continue;
+                try
+                {
+                    var data = _client2.GetAsync(imgPath).Result.Content.ReadAsByteArrayAsync().Result;
+                    File.WriteAllBytes($"Avatar\\{profileName}.png", data);
+                }
+                catch (Exception ex)
+                {
+                    File.AppendAllText("AvaterLog.log", ex + "\n");
+                }
+            }
+        }
+
+        //From:https://stackoverflow.com/questions/62771/how-do-i-check-if-a-given-string-is-a-legal-valid-file-name-under-windows
+        static Regex containsABadCharacter = new Regex("["
+                                                       + Regex.Escape(new string(System.IO.Path.GetInvalidPathChars())) + "]");
+        public static bool IsValidFilename(string testName)
+        {
+
+            if (containsABadCharacter.IsMatch(testName)) { return false; };
+
+            // other checks for UNC, drive-path format, etc
+
+            return true;
+        }
+
+        private void Form1_Load_1(object sender, EventArgs e)
+        {
+            
         }
     }
 

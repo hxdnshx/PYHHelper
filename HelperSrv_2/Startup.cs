@@ -25,6 +25,7 @@ namespace HelperSrv_2
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddCors();
             services.AddMvc();
         }
 
@@ -41,10 +42,13 @@ namespace HelperSrv_2
             app.UseStaticFiles(new StaticFileOptions
             {
                 FileProvider = new PhysicalFileProvider(
-                    Path.Combine(Directory.GetCurrentDirectory(), "Images")),
-                RequestPath = "/Images"
+                    Path.Combine(Directory.GetCurrentDirectory(),"wwwroot")),
+                RequestPath = ""
             });
-
+            app.UseCors(builder =>
+                builder
+                    .AllowAnyHeader().AllowAnyMethod()
+            );
             app.UseMvc();
         }
     }
