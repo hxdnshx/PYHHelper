@@ -54,7 +54,7 @@ namespace LiveHelper
                 return;
             if (e.Danmaku.CommentText == null)
                 return;
-            var mat2 = pattern2.Match(e.Danmaku.CommentText);
+            var mat2 = pattern2.Match(e.Danmaku.CommentText.Replace("，",","));
             if (mat2.Success)
             {
                 targethwnd = FindWindow(null, "PYHHelper");

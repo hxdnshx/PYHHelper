@@ -238,6 +238,7 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             this.openFileDialog1.Filter = "回放文件|*.rep|所有文件|*.*";
+            this.openFileDialog1.Multiselect = true;
             // 
             // button6
             // 

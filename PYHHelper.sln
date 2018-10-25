@@ -24,6 +24,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProfileUploader", "ProfileU
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReplayRename", "ReplayRename\ReplayRename.csproj", "{7E223B9B-19E3-4C95-A035-2A1E2E2C0183}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HelperSrv_2", "HelperSrv_2\HelperSrv_2.csproj", "{A5145EC5-C78D-4C1B-B343-B205100BA94E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -132,6 +134,18 @@ Global
 		{7E223B9B-19E3-4C95-A035-2A1E2E2C0183}.Release|x64.Build.0 = Release|Any CPU
 		{7E223B9B-19E3-4C95-A035-2A1E2E2C0183}.Release|x86.ActiveCfg = Release|Any CPU
 		{7E223B9B-19E3-4C95-A035-2A1E2E2C0183}.Release|x86.Build.0 = Release|Any CPU
+		{A5145EC5-C78D-4C1B-B343-B205100BA94E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A5145EC5-C78D-4C1B-B343-B205100BA94E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A5145EC5-C78D-4C1B-B343-B205100BA94E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A5145EC5-C78D-4C1B-B343-B205100BA94E}.Debug|x64.Build.0 = Debug|Any CPU
+		{A5145EC5-C78D-4C1B-B343-B205100BA94E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A5145EC5-C78D-4C1B-B343-B205100BA94E}.Debug|x86.Build.0 = Debug|Any CPU
+		{A5145EC5-C78D-4C1B-B343-B205100BA94E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A5145EC5-C78D-4C1B-B343-B205100BA94E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5145EC5-C78D-4C1B-B343-B205100BA94E}.Release|x64.ActiveCfg = Release|Any CPU
+		{A5145EC5-C78D-4C1B-B343-B205100BA94E}.Release|x64.Build.0 = Release|Any CPU
+		{A5145EC5-C78D-4C1B-B343-B205100BA94E}.Release|x86.ActiveCfg = Release|Any CPU
+		{A5145EC5-C78D-4C1B-B343-B205100BA94E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

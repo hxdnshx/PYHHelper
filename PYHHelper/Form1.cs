@@ -140,10 +140,11 @@ namespace PYHHelper
             }
             else if (m.Msg == 0x402)
             {
-                string str = Clipboard.GetText();
+                string str = Clipboard.GetText().Replace("，",",");
                 var results = _filterPat.Matches(str);
                 IQueryable<ReplayTable> query = _records.Replays;
                 string filterStr = "";
+                int filters = 0;
                 foreach (Match result in results)
                 {
                     string filter = result.Groups[1].Value;
@@ -170,17 +171,24 @@ namespace PYHHelper
 
                     if (!isValid)
                         continue;
-                    filterStr += $"{filter}为{filterStr} ";
+                    filterStr += $"{filter}为{filterValue} ";
+                    filters++;
                 }
 
-                var resultList = new List<ReplayTable>(query);
+                if (filters == 0)
+                {
+                    StatusLog("筛选条件为空，清空当前筛选。");
+                    _current = new List<ReplayTable>();
+                }
+                var resultList = new List<ReplayTable>(query.OrderBy(x => Guid.NewGuid()).Take(10));
                 if (resultList.Count <= 0)
                 {
                     StatusLog($"失败，找不到满足条件的rep:{filterStr}");
+                    //_current = new List<ReplayTable>();
                 }
                 else
                 {
-                    StatusLog($"成功，共有{resultList.Count}个rep:{filterStr}");
+                    StatusLog($"成功，随机挑选{resultList.Count}个播放:{filterStr}");
                     _current = resultList;
                     _filterStr = filterStr;
                 }
@@ -679,8 +687,13 @@ namespace PYHHelper
                 //listBox1.Items.Add(openFileDialog1.FileName);
                 //currentindex = listBox1.Items.Count - 1;
                 _current = new List<ReplayTable>();
-                _current.Add(new ReplayTable{FileName = openFileDialog1.FileName });
+                foreach (var file in openFileDialog1.FileNames)
+                {
+                    _current.Add(new ReplayTable { FileName = file });
+                }
                 _LoadReplay = true;
+                //ReplayReader.Open(openFileDialog1.FileName);
+                //ReplayReader.ModifyRep(openFileDialog1.FileName);
             }
         }
 
